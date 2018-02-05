@@ -2,7 +2,18 @@
 ## Tensorflow Implementation of Nested LSTM Cell
 
 Here is a tensorflow implementation of Nested LSTM cell.
-It is compatible with the tensorflow rnn API.
+
+| ![nlstm architecture](https://github.com/hannw/nlstm/img/nlstm_architecture.png) |
+|:--:| 
+| *Nested LSTM Architecture. Courtesy of Moniz et al.* |
+
+NLSTM cell is basically a LSTM-like cell that uses the cell memory to control the state of the inner LSTM, and as such, the architecture can be generalized to multiple layers. For a comparison between LSTM and NLSTM,
+
+| ![lstm vs nlstm](https://github.com/hannw/nlstm/img/lstm_vs_nlstm.png) |
+|:--:| 
+| *LSTM and stacked LSTM, versus nested LSTM. Courtesy of Moniz et al.* |
+
+The implementation  here is compatible with the tensorflow rnn API.
 
 ```python
 from rnn_cell import NLSTMCell
