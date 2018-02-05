@@ -12,9 +12,6 @@ output, new_state = cell(inputs, state=init_state)
 ...
 ```
 
-Note:
-- The defualt activation here is tanh. However, in the paper the author seems to use sigmoid for all gates.
-
 Ref:
 - Moniz et al, "Nested LSTMs." https://arxiv.org/abs/1801.10308
 
