@@ -3,13 +3,13 @@
 
 Here is a tensorflow implementation of Nested LSTM cell.
 
-| ![nlstm architecture](https://github.com/hannw/nlstm/img/nlstm_architecture.png) |
+| ![nlstm architecture](img/nlstm_architecture.png) |
 |:--:| 
 | *Nested LSTM Architecture. Courtesy of Moniz et al.* |
 
 NLSTM cell is basically a LSTM-like cell that uses the cell memory to control the state of the inner LSTM, and as such, the architecture can be generalized to multiple layers. For a comparison between LSTM and NLSTM,
 
-| ![lstm vs nlstm](https://github.com/hannw/nlstm/img/lstm_vs_nlstm.png) |
+| ![lstm vs nlstm](img/lstm_vs_nlstm.png) |
 |:--:| 
 | *LSTM and stacked LSTM, versus nested LSTM. Courtesy of Moniz et al.* |
 
