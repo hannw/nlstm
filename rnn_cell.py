@@ -68,7 +68,7 @@ class NLSTMCell(rnn_cell_impl.RNNCell):
     self._state_is_tuple = state_is_tuple
     self._use_peepholes = use_peepholes
     self._depth = depth
-    self._activation = activation or math_ops.sigmoid
+    self._activation = activation or math_ops.tanh
     self._gate_activation = gate_activation or math_ops.sigmoid
     self._use_bias = use_bias
     self._kernels = None
