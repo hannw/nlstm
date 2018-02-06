@@ -32,6 +32,9 @@ class NLSTMCell(rnn_cell_impl.RNNCell):
   def __init__(self, num_units, depth, forget_bias=1.0,
                state_is_tuple=True, use_peepholes=False,
                activation=None, gate_activation=None,
+               cell_activation=None,
+               initializer=None,
+               input_gate_initializer=None,
                use_bias=True, reuse=None, name=None):
     """Initialize the basic NLSTM cell.
 
@@ -48,6 +51,11 @@ class NLSTMCell(rnn_cell_impl.RNNCell):
         including new inputs and new cell states.  Default: `sigmoid`.
       gate_activation: Activation function of the gates,
         including the input, ouput, and forget gate. Default: `sigmoid`.
+      cell_activation: Activation function of the first cell gate. Default: `identity`.
+        Note that in the paper only the first cell_activation is identity.
+      initializer: Initializer of kernel. Default: `orthogonal_initializer`.
+      input_gate_initializer: Initializer of input gates.
+        Default: `glorot_normal_initializer`.
       use_bias: `bool`. Default: `True`.
       reuse: `bool`(optional) Python boolean describing whether to reuse variables
         in an existing scope.  If not `True`, and the existing scope already has
@@ -68,8 +76,12 @@ class NLSTMCell(rnn_cell_impl.RNNCell):
     self._state_is_tuple = state_is_tuple
     self._use_peepholes = use_peepholes
     self._depth = depth
-    self._activation = activation or math_ops.sigmoid
+    self._activation = activation or math_ops.tanh
     self._gate_activation = gate_activation or math_ops.sigmoid
+    self._cell_activation = cell_activation or array_ops.identity
+    self._initializer = initializer or init_ops.orthogonal_initializer()
+    self._input_gate_initializer = (input_gate_initializer 
+                                    or init_ops.glorot_normal_initializer())
     self._use_bias = use_bias
     self._kernels = None
     self._biases = None
@@ -105,15 +117,23 @@ class NLSTMCell(rnn_cell_impl.RNNCell):
       self._peep_kernels = []
     for i in range(self.depth):
       if i == 0:
-        self._kernels.append(
-            self.add_variable(
-                "kernel_{}".format(i),
-                shape=[input_depth + h_depth, 4 * self._num_units]))
+        input_kernel = self.add_variable(
+            "input_gate_kernel",
+            shape=[input_depth, 4 * self._num_units],
+            initializer=self._input_gate_initializer)
+        hidden_kernel = self.add_variable(
+            "hidden_gate_kernel",
+            shape=[h_depth, 4 * self._num_units],
+            initializer=self._initializer)
+        kernel = tf.concat([input_kernel, hidden_kernel],
+                           axis=0, name="kernel_0")
+        self._kernels.append(kernel)
       else:
         self._kernels.append(
             self.add_variable(
                 "kernel_{}".format(i),
-                shape=[2 * h_depth, 4 * self._num_units]))
+                shape=[2 * h_depth, 4 * self._num_units],
+                initializer=self._initializer))
       if self._use_bias:
         self._biases.append(
             self.add_variable(
@@ -124,7 +144,8 @@ class NLSTMCell(rnn_cell_impl.RNNCell):
         self._peep_kernels.append(
             self.add_variable(
                 "peep_kernel_{}".format(i),
-                shape=[h_depth, 3 * self._num_units]))
+                shape=[h_depth, 3 * self._num_units],
+                initializer=self._initializer))
 
     self.built = True
 
@@ -167,6 +188,14 @@ class NLSTMCell(rnn_cell_impl.RNNCell):
       f += f_peep
       o += o_peep 
 
+    if self._use_peepholes:
+      peep_gate_inputs = math_ops.matmul(c, self._peep_kernels[depth])
+      i_peep, f_peep, o_peep = array_ops.split(
+          value=peep_gate_inputs, num_or_size_splits=3, axis=one)
+      i += i_peep
+      f += f_peep
+      o += o_peep 
+
     # Note that using `add` and `multiply` instead of `+` and `*` gives a
     # performance improvement. So using those at the cost of readability.
     add = math_ops.add
@@ -177,7 +206,12 @@ class NLSTMCell(rnn_cell_impl.RNNCell):
       f = add(f, forget_bias_tensor)
 
     inner_hidden = multiply(c, self._gate_activation(f))
-    inner_input = multiply(self._gate_activation(i), self._activation(j))
+
+    if depth == 0:
+      inner_input = multiply(self._gate_activation(i), self._cell_activation(j))
+    else:
+      inner_input = multiply(self._gate_activation(i), self._activation(j))
+
     if depth == (self.depth - 1):
       new_c = add(inner_hidden, inner_input)
       new_cs = [new_c]
